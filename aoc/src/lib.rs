@@ -155,4 +155,17 @@ mod tests {
         assert_eq!(run.time2(), None);
         assert!(run.cleanuptime() < Some(Duration::from_millis(1)));
     }
+
+    fn do_double_part1(_i: impl BufRead, r: &mut ExRunner) {
+        r.part1(1);
+        r.part1(2); // this will panic
+    }
+
+    #[test]
+    #[should_panic(expected = "Cannot give part1 twice")]
+    fn double_part1() {
+        let input = BufReader::new("nothing".as_bytes());
+        let _run = ExRunner::run("double_part1".to_string(), do_double_part1, input);
+    }
+
 }
