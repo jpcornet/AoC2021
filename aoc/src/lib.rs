@@ -7,6 +7,7 @@ pub struct ExRunner<'a> {
     name: String,
     start: Instant,
     answ: [Option<Box<dyn Display + 'a>>; 2],
+    label: [String; 2],
     parsetime: Option<Duration>,
     runtime: [Option<Duration>; 2],
     totaltime: Option<Duration>,
@@ -25,7 +26,7 @@ impl<'a> ExRunner<'a> {
         &self.name
     }
 
-    fn part_x<T>(&mut self, part: usize, answ: T)
+    fn part_x<T>(&mut self, part: usize, answ: T, label: Option<String>)
         where T: Display + 'a
     {
         let elapsed = self.start.elapsed();
@@ -33,6 +34,7 @@ impl<'a> ExRunner<'a> {
             None => self.answ[part].insert(Box::new(answ)),
             Some(_) => panic!("Cannot give part{} twice", part + 1),
         };
+        self.label[part] = label.unwrap_or(format!("part{}:", part + 1));
         let i = match self.runtime[0] {
             None => 0,
             _ => 1,
@@ -40,16 +42,16 @@ impl<'a> ExRunner<'a> {
         self.runtime[i] = Some(elapsed);
     }
 
-    pub fn part1<T>(&mut self, answ: T)
+    pub fn part1<T>(&mut self, answ: T, label: Option<String>)
         where T: Display + 'a
     {
-        self.part_x(0, answ);
+        self.part_x(0, answ, label);
     }
 
-    pub fn part2<T>(&mut self, answ: T)
+    pub fn part2<T>(&mut self, answ: T, label: Option<String>)
         where T: Display + 'a
     {
-        self.part_x(1, answ);
+        self.part_x(1, answ, label);
     }
 
     pub fn parse_done(&mut self) {
@@ -89,6 +91,7 @@ impl<'a> Default for ExRunner<'a> {
             name: "".to_string(),
             start: Instant::now(),
             answ: [None, None],
+            label: ["".to_string(), "".to_string()],
             parsetime: None,
             runtime: [None; 2],
             totaltime: None,
@@ -116,18 +119,19 @@ mod tests {
     #[test]
     fn just_part1() {
         let input = BufReader::new("foo".as_bytes());
-        let run = ExRunner::run("just_part1".to_string(), |_i, r| r.part1(3), input);
+        let run = ExRunner::run("just_part1".to_string(), |_i, r| r.part1(3, None), input);
         assert_eq!(run.answ(), vec![Some("3".to_string()), None]);
         assert_eq!(*run.name(), "just_part1".to_string());
+        assert_eq!(run.label[0], "part1:".to_string());
         assert!(run.time1().is_some());
         assert!(run.time2().is_none());
     }
 
     fn do_two_parts(i: impl BufRead, r: &mut ExRunner) {
         let part1 = i.lines().map(|l| l.unwrap()).collect::<Vec<String>>().join(" ");
-        r.part1(part1);
+        r.part1(part1, None);
         thread::sleep(Duration::from_millis(1));
-        r.part2(3.5);
+        r.part2(3.5, Some("Floating point result:".to_string()));
     }
 
     #[test]
@@ -137,12 +141,13 @@ mod tests {
         assert_eq!(run.answ(), vec![Some("foo bar test".to_string()), Some("3.5".to_string())]);
         assert!(run.time1() < Some(Duration::from_millis(1)));
         assert!(run.time2() > Some(Duration::from_millis(1)));
+        assert_eq!(run.label[1], "Floating point result:".to_string());
     }
 
     fn do_only_part2(_i: impl BufRead, r: &mut ExRunner) {
         r.parse_done();
         thread::sleep(Duration::from_millis(1));
-        r.part2("static slice here");
+        r.part2("static slice here", None);
     }
 
     #[test]
@@ -157,8 +162,8 @@ mod tests {
     }
 
     fn do_double_part1(_i: impl BufRead, r: &mut ExRunner) {
-        r.part1(1);
-        r.part1(2); // this will panic
+        r.part1(1, None);
+        r.part1(2, None); // this will panic
     }
 
     #[test]
