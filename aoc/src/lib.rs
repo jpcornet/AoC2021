@@ -26,7 +26,7 @@ impl<'a> ExRunner<'a> {
         &self.name
     }
 
-    fn part_x<T>(&mut self, part: usize, answ: T, label: Option<String>)
+    fn part_x<T>(&mut self, part: usize, answ: T, label: Option<&str>)
         where T: Display + 'a
     {
         let elapsed = self.start.elapsed();
@@ -34,7 +34,7 @@ impl<'a> ExRunner<'a> {
             None => self.answ[part].insert(Box::new(answ)),
             Some(_) => panic!("Cannot give part{} twice", part + 1),
         };
-        self.label[part] = label.unwrap_or(format!("part{}:", part + 1));
+        self.label[part] = label.unwrap_or(&format!("part{}", part + 1)).to_string();
         let i = match self.runtime[0] {
             None => 0,
             _ => 1,
@@ -42,13 +42,13 @@ impl<'a> ExRunner<'a> {
         self.runtime[i] = Some(elapsed);
     }
 
-    pub fn part1<T>(&mut self, answ: T, label: Option<String>)
+    pub fn part1<T>(&mut self, answ: T, label: Option<&str>)
         where T: Display + 'a
     {
         self.part_x(0, answ, label);
     }
 
-    pub fn part2<T>(&mut self, answ: T, label: Option<String>)
+    pub fn part2<T>(&mut self, answ: T, label: Option<&str>)
         where T: Display + 'a
     {
         self.part_x(1, answ, label);
@@ -82,6 +82,33 @@ impl<'a> ExRunner<'a> {
                                                 self.runtime[0].unwrap_or(
                                                 self.parsetime.unwrap_or(
                                                 Duration::from_secs(0)))))
+    }
+
+    pub fn print_raw(&self) {
+        if self.runtime[0].is_none() {
+            println!("{} did not produce any answers", self.name);
+        } else {
+            println!("{}:", self.name);
+            let answers = self.answ();
+            for i in 0..=1 {
+                if let Some(a) = &answers[i] {
+                    println!("{}: {}", self.label[i], a);
+                }
+            }
+            if let Some(pt) = self.parsetime {
+                println!("Parsing took: {:?}", pt)
+            }
+            let ordinals = vec!["first", "second"];
+            let runtimes = vec![self.time1(), self.time2()];
+            for i in 0..=1 {
+                if let Some(rt) = runtimes[i] {
+                    println!("Calculating {} answer took: {:?}", ordinals[i], rt);
+                }
+            }
+        }
+        if let Some(ct) = self.cleanuptime() {
+            println!("Cleanup took: {:?}", ct);
+        }
     }
 }
 
@@ -122,7 +149,7 @@ mod tests {
         let run = ExRunner::run("just_part1".to_string(), |_i, r| r.part1(3, None), input);
         assert_eq!(run.answ(), vec![Some("3".to_string()), None]);
         assert_eq!(*run.name(), "just_part1".to_string());
-        assert_eq!(run.label[0], "part1:".to_string());
+        assert_eq!(run.label[0], "part1".to_string());
         assert!(run.time1().is_some());
         assert!(run.time2().is_none());
     }
@@ -131,7 +158,7 @@ mod tests {
         let part1 = i.lines().map(|l| l.unwrap()).collect::<Vec<String>>().join(" ");
         r.part1(part1, None);
         thread::sleep(Duration::from_millis(1));
-        r.part2(3.5, Some("Floating point result:".to_string()));
+        r.part2(3.5, Some("Floating point result:"));
     }
 
     #[test]

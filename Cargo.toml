@@ -2,4 +2,5 @@
 
 members = [
     "aoc",
+    "day1_sonar_sweep",
 ]
