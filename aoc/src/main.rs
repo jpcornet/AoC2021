@@ -73,7 +73,7 @@ fn find_root_dir() -> std::io::Result<PathBuf> {
     let mut maybe_root_dir = find_in_ancestors(std::env::current_dir()?, &DAYS[0].dir, uid, &mut seen);
     if maybe_root_dir.is_err() {
         // search again, from program
-        maybe_root_dir = find_in_ancestors(PathBuf::from(std::env::args().into_iter().next().unwrap()).canonicalize()?, &DAYS[0].dir, uid, &mut seen);
+        maybe_root_dir = find_in_ancestors(PathBuf::from(std::env::args().next().unwrap()).canonicalize()?, &DAYS[0].dir, uid, &mut seen);
     }
     return Ok(maybe_root_dir?);
 }
