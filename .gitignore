@@ -11,3 +11,6 @@ Cargo.lock
 
 # input files not in git
 **/input
+
+# session cookie on adventofcode to download the input files
+session.cookie

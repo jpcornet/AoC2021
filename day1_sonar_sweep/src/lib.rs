@@ -1,14 +1,13 @@
-use aoc::ExRunner;
+use exrunner::ExRunner;
 use std::io::BufRead;
 
 fn count_increase(acc: (usize, Option<u32>), elem: u32) -> (usize, Option<u32>) {
-    if acc.1.is_none() {
-        (acc.0, Some(elem))
-    } else if acc.1.unwrap() < elem {
-        (acc.0 + 1, Some(elem))
+    let newcount = if acc.1.is_none() || elem <= acc.1.unwrap() {
+        acc.0
     } else {
-        (acc.0, Some(elem))
-    }
+        acc.0 + 1
+    };
+    (newcount, Some(elem))
 }
 
 pub fn solve(input: impl BufRead, er: &mut ExRunner) {
