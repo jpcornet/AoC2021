@@ -84,6 +84,10 @@ impl<'a> ExRunner<'a> {
                                                 Duration::from_secs(0)))))
     }
 
+    pub fn totaltime(&self) -> Option<Duration> {
+        self.totaltime
+    }
+
     pub fn print_raw(&self) {
         if self.runtime[0].is_none() {
             println!("{} did not produce any answers", self.name);
@@ -108,6 +112,9 @@ impl<'a> ExRunner<'a> {
         }
         if let Some(ct) = self.cleanuptime() {
             println!("Cleanup took: {:?}", ct);
+        }
+        if let Some(tt) = self.totaltime() {
+            println!("Total exercise time: {:?}", tt);
         }
     }
 }

@@ -6,6 +6,7 @@ use std::collections::{HashMap, hash_map::Entry};
 use std::path::PathBuf;
 use std::fs;
 use std::os::unix::fs::MetadataExt;
+use std::process::exit;
 
 /// command line tool to run Advent of Code puzzles and display output and timings
 /// 
@@ -20,9 +21,9 @@ struct Args {
     #[arg(short, long)]
     all: bool,
 
-    /// input file name
-    #[arg(short, long, default_value_t=String::from("input.txt"))]
-    input: String,
+    /// input file name (default: input.txt)
+    #[arg(short, long)]
+    input: Option<String>,
 
     /// which puzzle(s) to run
     puzzle: Vec<u8>,
@@ -35,6 +36,7 @@ struct Day {
     solve: fn(BufReader<File>, &mut ExRunner),
 }
 
+// all puzzle days. Note that the puzzle number should be the first number in the directory name.
 const DAYS: &'static [Day] = &[
     Day{ dir: "day1_sonar_sweep", solve: day1_sonar_sweep::solve },
 ];
@@ -49,12 +51,68 @@ fn main() {
             .exit();
     }
     let rootdir = find_root_dir();
-    if let std::io::Result::Err(e) = rootdir {
+    if let Err(e) = rootdir {
         eprintln!("Cannot find path to exercises: {:?}", e);
-        std::process::exit(2);
+        exit(2);
     }
     let rootdir = rootdir.unwrap();
-    println!("Arguments: {:?}. rootdir: {:?}", args, rootdir);
+    // which puzzles to run
+    if args.all {
+        run_puzzles(rootdir, args.input, &DAYS);
+    }
+    // // XXX refactor me
+    // let mut puzzles: Vec<&Day> = Vec::new();
+    // if args.puzzle.len() > 0 {
+    //     let mut to_run: HashMap<u8, ()> = HashMap::new();
+    //     for p in args.puzzle {
+    //         let e = to_run.entry(p);
+    //         if let Entry::Occupied(_) = e {
+    //             eprintln!("You want to run puzzle {p} twice?");
+    //             exit(2);
+    //         }
+    //         e.or_insert(());
+    //     }
+    //     for d in DAYS {
+    //         let numstart = d.dir.find(char::is_ascii_digit).expect("All directories should include a day number");
+    //         let numend = numstart + d.dir[numstart..].find(|d| !d.is_ascii_digit()).or(len(d[numstart..])).unwrap();
+    //         let dnum: u8 = d.dir[numstart..numend].parse().expect("Day number should be sane");
+    //         if to_run.contains_key(dnum) {
+    //             puzzles.push(d);
+    //             to_run.remove(dnum);
+    //         }
+    //         if !to_run.is_empty() {
+    //             eprintln!("Puzzles not found: {}", to_run.keys().collect::<Vec<_>>());
+    //             exit(2);
+    //         }
+    //     }
+    // } else if !args.all {
+    //     // get the current directory, and see if any path is a puzzle directory
+    //     let curdir = std::env::current_dir();
+    //     if let Ok(cd) = curdir {
+
+    //         cd.components().find(|c| DAYS.iter().find(|d| c == Component::Normal(&d.dir) ))
+    //     }
+    // }
+}
+
+fn run_puzzles(rootdir: PathBuf, input: Option<String>, days: &[Day]) {
+    let inputfile  = match input {
+        Some(i) => i,
+        _ => String::from("input.txt"),
+    };
+    for d in days {
+        let mut fname = rootdir.clone();
+        fname.push(d.dir);
+        fname.push("input");
+        fname.push(&inputfile);
+        let fh = File::open(&fname);
+        if let Err(e) = fh {
+            eprintln!("Error: cannot open file {} for exercise {}: {e}", fname.to_string_lossy(), d.dir);
+            continue;
+        }
+        let er = ExRunner::run(d.dir.to_string(), d.solve, BufReader::new(fh.unwrap()));
+        er.print_raw();
+    }
 }
 
 // libc-specific: get access to uid
@@ -69,16 +127,16 @@ fn find_root_dir() -> std::io::Result<PathBuf> {
     let uid: u32;
     unsafe { uid = geteuid(); }
     // maintain a hash of directories that we looked at
-    let mut seen: HashMap<PathBuf, bool> = HashMap::new();
-    let mut maybe_root_dir = find_in_ancestors(std::env::current_dir()?, &DAYS[0].dir, uid, &mut seen);
-    if maybe_root_dir.is_err() {
-        // search again, from program
-        maybe_root_dir = find_in_ancestors(PathBuf::from(std::env::args().next().unwrap()).canonicalize()?, &DAYS[0].dir, uid, &mut seen);
-    }
-    return Ok(maybe_root_dir?);
+    let mut seen: HashMap<PathBuf, ()> = HashMap::new();
+    let root_dir =
+        find_in_ancestors(std::env::current_dir()?, &DAYS[0].dir, uid, &mut seen).or_else(|_|
+            // search again, from program
+            find_in_ancestors(PathBuf::from(std::env::args().next().unwrap()).canonicalize()?, &DAYS[0].dir, uid, &mut seen))?;
+    return Ok(root_dir);
 }
 
-fn find_in_ancestors(startdir: PathBuf, target: &str, uid: u32, seen: &mut HashMap<PathBuf, bool>) -> std::io::Result<PathBuf> {
+fn find_in_ancestors(startdir: PathBuf, target: &str, uid: u32, seen: &mut HashMap<PathBuf, ()>) -> std::io::Result<PathBuf> {
+    // try_find would make this a bit cleaner, but that's only in nightly at the moment.
     for d in startdir.ancestors() {
         // verify d is a directory and is owned by the right user
         let attr = fs::metadata(d)?;
@@ -104,7 +162,7 @@ fn find_in_ancestors(startdir: PathBuf, target: &str, uid: u32, seen: &mut HashM
             return Ok(d.to_path_buf());
         }
         // mark that we've searched this path, and continue up the tree
-        e.or_insert(true);
+        e.or_insert(());
     }
     // if we get here, we didn't find it
     Err(std::io::Error::new(std::io::ErrorKind::NotFound, "Searched all the way to the top, nothing found"))
