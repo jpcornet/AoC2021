@@ -77,13 +77,13 @@ fn main() {
 
 // returns the first number in a string
 fn first_number<'a>(input: &'a str) -> &'a str {
-    let mut walk = input.char_indices();
-    let start_off = walk.find_map(|(off, c)| match c.is_ascii_digit() { true => Some(off), _ => None });
+    let start_off = input.find(|c: char| c.is_ascii_digit());
     if start_off.is_none() {
         return "";
     }
-    let end_off = walk.find_map(|(off, c)| match c.is_ascii_digit() { false => Some(off), _ => None }).or(Some(input.len())).unwrap();
-    &input[start_off.unwrap()..end_off]
+    let start_off = start_off.unwrap();
+    let end_off = input[start_off..].find(|c: char| !c.is_ascii_digit()).unwrap_or(input[start_off..].len());
+    &input[start_off..start_off+end_off]
 }
 
 // convert list of puzzle numbers to Vec of Day structures.
