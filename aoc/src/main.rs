@@ -1,4 +1,4 @@
-use std::io::BufReader;
+use std::io::{BufReader, ErrorKind};
 use std::fs::File;
 use exrunner::ExRunner;
 use clap::{CommandFactory, Parser};
@@ -26,9 +26,10 @@ struct Args {
     input: Option<String>,
 
     /// which puzzle(s) to run
-    puzzle: Vec<u8>,
+    puzzle: Vec<u32>,
 }
 
+#[derive(Clone)]
 struct Day {
     dir: &'static str,
     // Need to specify the specific type of BufReader<File> here, because function
@@ -59,42 +60,67 @@ fn main() {
     // which puzzles to run
     if args.all {
         run_puzzles(rootdir, args.input, &DAYS);
+    } else if args.puzzle.len() == 0 {
+        let puzzle = current_puzzle();
+        match puzzle {
+            Ok(d) => run_puzzles(rootdir, args.input, d),
+            Err(e) if e.kind() == ErrorKind::NotFound => run_puzzles(rootdir, args.input, &DAYS[DAYS.len()-1..]),
+            Err(e) => {
+                eprintln!("Error searching for puzzle from current dir: {e}");
+                exit(1);
+            },
+        };
+    } else {
+        run_puzzles(rootdir, args.input, &to_days(&args.puzzle));
     }
-    // // XXX refactor me
-    // let mut puzzles: Vec<&Day> = Vec::new();
-    // if args.puzzle.len() > 0 {
-    //     let mut to_run: HashMap<u8, ()> = HashMap::new();
-    //     for p in args.puzzle {
-    //         let e = to_run.entry(p);
-    //         if let Entry::Occupied(_) = e {
-    //             eprintln!("You want to run puzzle {p} twice?");
-    //             exit(2);
-    //         }
-    //         e.or_insert(());
-    //     }
-    //     for d in DAYS {
-    //         let numstart = d.dir.find(char::is_ascii_digit).expect("All directories should include a day number");
-    //         let numend = numstart + d.dir[numstart..].find(|d| !d.is_ascii_digit()).or(len(d[numstart..])).unwrap();
-    //         let dnum: u8 = d.dir[numstart..numend].parse().expect("Day number should be sane");
-    //         if to_run.contains_key(dnum) {
-    //             puzzles.push(d);
-    //             to_run.remove(dnum);
-    //         }
-    //         if !to_run.is_empty() {
-    //             eprintln!("Puzzles not found: {}", to_run.keys().collect::<Vec<_>>());
-    //             exit(2);
-    //         }
-    //     }
-    // } else if !args.all {
-    //     // get the current directory, and see if any path is a puzzle directory
-    //     let curdir = std::env::current_dir();
-    //     if let Ok(cd) = curdir {
-
-    //         cd.components().find(|c| DAYS.iter().find(|d| c == Component::Normal(&d.dir) ))
-    //     }
-    // }
 }
 
+// returns the first number in a string
+fn first_number<'a>(input: &'a str) -> &'a str {
+    let mut walk = input.char_indices();
+    let start_off = walk.find_map(|(off, c)| match c.is_ascii_digit() { true => Some(off), _ => None });
+    if start_off.is_none() {
+        return "";
+    }
+    let end_off = walk.find_map(|(off, c)| match c.is_ascii_digit() { false => Some(off), _ => None }).or(Some(input.len())).unwrap();
+    &input[start_off.unwrap()..end_off]
+}
+
+// convert list of puzzle numbers to Vec of Day structures.
+fn to_days(puzzle: &Vec<u32>) -> Vec<Day> {
+    // keep hash of puzzle number and index
+    let mut puzzle_pos: HashMap<u32, Option<usize>> = HashMap::new();
+    for (index, d) in DAYS.iter().enumerate() {
+        let puzzlenum: u32 = first_number(d.dir).parse().expect(&format!("Cannot find puzzle number in {}", d.dir));
+        assert!(!puzzle_pos.contains_key(&puzzlenum), "Duplicate puzzle number");
+        puzzle_pos.insert(puzzlenum, Some(index));
+    }
+    let mut result: Vec<Day> = Vec::new();
+    for p in puzzle {
+        match puzzle_pos.get(p) {
+            None => { eprintln!("Puzzle number {p} does not exist"); exit(1); },
+            Some(Some(i)) => { result.push(DAYS[*i].clone()); puzzle_pos.insert(*p, None); },
+            Some(None) => { eprintln!("Trying to run puzzle {p} twice?"); exit(1); },
+        };
+    }
+    result
+}
+
+// Convert current directory to Day ref, or error if not found.
+fn current_puzzle() -> std::io::Result<&'static [Day]> {
+    // convert directories in DAYS to a hash
+    let mut dirpos: HashMap<&str, usize> = HashMap::new();
+    for (index, d) in DAYS.into_iter().enumerate() {
+        dirpos.insert(d.dir, index);
+    }
+    let dindex = std::env::current_dir()?.ancestors().find_map(|d| dirpos.get(d.to_string_lossy().as_ref()));
+    match dindex {
+        Some(i) => Ok(&DAYS[*i..=*i]),
+        None => Err(std::io::Error::new(ErrorKind::NotFound, "Current directory is not a puzzle")),
+    }
+}
+
+// run a list of puzzles
 fn run_puzzles(rootdir: PathBuf, input: Option<String>, days: &[Day]) {
     let inputfile  = match input {
         Some(i) => i,
@@ -135,6 +161,7 @@ fn find_root_dir() -> std::io::Result<PathBuf> {
     return Ok(root_dir);
 }
 
+// find a subdirectory somewhere in the current dir or one of the directories above, only checking directories owned by the given uid.
 fn find_in_ancestors(startdir: PathBuf, target: &str, uid: u32, seen: &mut HashMap<PathBuf, ()>) -> std::io::Result<PathBuf> {
     // try_find would make this a bit cleaner, but that's only in nightly at the moment.
     for d in startdir.ancestors() {
@@ -146,12 +173,12 @@ fn find_in_ancestors(startdir: PathBuf, target: &str, uid: u32, seen: &mut HashM
         }
         // if it has the wrong uid, stop immediately
         if attr.uid() != uid {
-            return Err(std::io::Error::new(std::io::ErrorKind::PermissionDenied, "Cannot find target directory"));
+            return Err(std::io::Error::new(ErrorKind::PermissionDenied, "Cannot find target directory"));
         }
         // if it's in the seen map, we have seen this dir already and we can abort with a "not found"
         let e = seen.entry(d.to_path_buf());
         if let Entry::Occupied(_) = e {
-            return Err(std::io::Error::new(std::io::ErrorKind::NotFound, "Cannot find target directory"));
+            return Err(std::io::Error::new(ErrorKind::NotFound, "Cannot find target directory"));
         }
         // try to access the target dir and see if it exists
         let mut targetdir = d.to_path_buf();
@@ -165,5 +192,5 @@ fn find_in_ancestors(startdir: PathBuf, target: &str, uid: u32, seen: &mut HashM
         e.or_insert(());
     }
     // if we get here, we didn't find it
-    Err(std::io::Error::new(std::io::ErrorKind::NotFound, "Searched all the way to the top, nothing found"))
+    Err(std::io::Error::new(ErrorKind::NotFound, "Searched all the way to the top, nothing found"))
 }
