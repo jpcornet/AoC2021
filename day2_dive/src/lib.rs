@@ -2,16 +2,16 @@ use exrunner::ExRunner;
 use std::io::BufRead;
 
 enum Movement {
-    Forward(i32),
-    Down(i32),
-    Up(i32),
+    Forward(i64),
+    Down(i64),
+    Up(i64),
 }
 
 fn parse(input: impl BufRead) -> Vec<Movement> {
     input.lines().map(|l| {
         let line = l.expect("Error reading input");
         let sp = line.find(char::is_whitespace).expect("Input line should contain space");
-        let amount: i32 = line[sp..].trim().parse().expect("Input should contain numbers");
+        let amount: i64 = line[sp..].trim().parse().expect("Input should contain numbers");
         match &line[..sp] {
             "forward" => Movement::Forward(amount),
             "down" => Movement::Down(amount),
@@ -24,16 +24,19 @@ fn parse(input: impl BufRead) -> Vec<Movement> {
 pub fn solve(input: impl BufRead, er: &mut ExRunner) {
     let ivec = parse(input);
     er.parse_done();
-    let mut h = 0;
-    let mut d = 0;
+    let mut h: i64 = 0;
+    let mut d: i64 = 0;
+    let mut aim: i64 = 0;
+    let mut d2: i64 = 0;
     for m in ivec {
         match m {
-            Movement::Forward(a) => h += a,
-            Movement::Down(a) => d += a,
-            Movement::Up(a) => d -= a,
+            Movement::Forward(a) => { h += a; d2 += aim * a },
+            Movement::Down(a) => { d += a; aim += a },
+            Movement::Up(a) => { d -= a; aim -= a },
         };
     }
     er.part1(h*d, Some(&format!("Position horizonatl={h}, depth={d}. Multiplied:")));
+    er.part2(h*d2, Some(&format!("part2 horizontal={h}, depth={d2}. Multiplied:")));
 }
 
 #[cfg(test)]
@@ -58,5 +61,6 @@ forward 2
         let er = ExRunner::run("day 2 - dive".to_string(), solve, test_input());
         er.print_raw();
         assert_eq!(er.answ()[0], Some("150".to_string()));
+        assert_eq!(er.answ()[1], Some("900".to_string()));
     }
 }

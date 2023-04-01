@@ -4,9 +4,11 @@ use exrunner::ExRunner;
 use clap::{CommandFactory, Parser};
 use std::collections::{HashMap, hash_map::Entry};
 use std::path::PathBuf;
-use std::fs;
+use std::{fs, env};
+use std::io::Read;
 use std::os::unix::fs::MetadataExt;
 use std::process::exit;
+use reqwest;
 
 /// command line tool to run Advent of Code puzzles and display output and timings
 /// 
@@ -36,6 +38,8 @@ struct Day {
     // pointers to generic functions do not exist.
     solve: fn(BufReader<File>, &mut ExRunner),
 }
+
+const YEAR: u16 = 2021;
 
 // all puzzle days. Note that the puzzle number should be the first number in the directory name.
 const DAYS: &'static [Day] = &[
@@ -109,7 +113,7 @@ fn to_days(puzzle: &Vec<u32>) -> Vec<Day> {
 
 // Convert current directory to Day ref, or error if not found.
 fn current_puzzle() -> std::io::Result<&'static [Day]> {
-    let curdir = std::env::current_dir()?;
+    let curdir = env::current_dir()?;
     let curdir_str = curdir.to_string_lossy() + "/";
     for (index, d) in DAYS.into_iter().enumerate() {
         if curdir_str.contains(&format!("/{}/", d.dir)) {
@@ -121,18 +125,16 @@ fn current_puzzle() -> std::io::Result<&'static [Day]> {
 
 // run a list of puzzles
 fn run_puzzles(rootdir: PathBuf, input: Option<String>, days: &[Day]) {
-    let inputfile  = match input {
-        Some(i) => i,
-        _ => String::from("input.txt"),
-    };
+    let defaultinput = String::from("input.txt");
+    let inputfile  = input.as_ref().unwrap_or(&defaultinput);
     for d in days {
         let mut fname = rootdir.clone();
         fname.push(d.dir);
         fname.push("input");
-        fname.push(&inputfile);
+        fname.push(inputfile);
         let meta = fs::metadata(&fname);
         match meta {
-            Err(e) if e.kind() == ErrorKind::NotFound => download_input(&d.dir, &fname),
+            Err(e) if e.kind() == ErrorKind::NotFound && input.is_none() => download_input(&rootdir, &d.dir, &fname),
             Err(e) => panic!("Error fetching {}: {e}", fname.to_string_lossy()),
             Ok(m) if !m.is_file() => panic!("{} is not a file, but a {:?}", fname.to_string_lossy(), m),
             _ => (),
@@ -147,8 +149,49 @@ fn run_puzzles(rootdir: PathBuf, input: Option<String>, days: &[Day]) {
     }
 }
 
-fn download_input(dirname: &str, target: &PathBuf) {
-    println!("In download_input for dirname={}, target={}", dirname, target.to_string_lossy());
+// download input to puzzle
+fn download_input(rootdir: &PathBuf, dirname: &str, target: &PathBuf) {
+    let session_cookie = match get_session_cookie(rootdir) {
+        Err(e) => panic!("No input file, and no session cookie found: {e}"),
+        Ok(s) => format!("session={s}"),
+    };
+    let daynum = first_number(dirname);
+    let url = format!("https://adventofcode.com/{YEAR}/day/{daynum}/input");
+    let client = reqwest::blocking::Client::new();
+    let res = client.get(&url)
+        .header(reqwest::header::COOKIE, session_cookie)
+        .send();
+    let mut resp = match res {
+        Err(e) => panic!("Cannot download input from {url}: {e}"),
+        Ok(resp) if !resp.status().is_success() => panic!("Error downloading input from {url}: {}", resp.status()),
+        Ok(resp) => resp,
+    };
+    // make sure output directory exists. Create it if not
+    let targetdir = target.parent().unwrap().clone();
+    let meta = fs::metadata(targetdir);
+    if meta.is_err() && meta.err().unwrap().kind() == ErrorKind::NotFound {
+        println!("Creating input directory {}", targetdir.to_string_lossy());
+        fs::create_dir(targetdir).expect("Cannot create input directory");
+    }
+    let mut fh = match File::options().write(true).create_new(true).open(target) {
+        Err(e) => panic!("Cannot create {}: {e}", target.to_string_lossy()),
+        Ok(f) => f,
+    };
+    println!("Downloading input from {url}");
+    resp.copy_to(&mut fh).expect("Error reading from URL writing to example input");
+}
+
+fn get_session_cookie(rootdir: &PathBuf) -> std::io::Result<String> {
+    match env::var("SESSION_COOKIE") {
+        Ok(s) => return Ok(s),
+        _ => (),
+    };
+    let mut cookiefile = rootdir.clone();
+    cookiefile.push("session.cookie");
+    let mut fh = File::open(cookiefile)?;
+    let mut contents = String::new();
+    fh.read_to_string(&mut contents)?;
+    Ok(contents.trim().to_string())
 }
 
 // libc-specific: get access to uid
@@ -165,9 +208,9 @@ fn find_root_dir() -> std::io::Result<PathBuf> {
     // maintain a hash of directories that we looked at
     let mut seen: HashMap<PathBuf, ()> = HashMap::new();
     let root_dir =
-        find_in_ancestors(std::env::current_dir()?, &DAYS[0].dir, uid, &mut seen).or_else(|_|
+        find_in_ancestors(env::current_dir()?, &DAYS[0].dir, uid, &mut seen).or_else(|_|
             // search again, from program
-            find_in_ancestors(PathBuf::from(std::env::args().next().unwrap()).canonicalize()?, &DAYS[0].dir, uid, &mut seen))?;
+            find_in_ancestors(PathBuf::from(env::args().next().unwrap()).canonicalize()?, &DAYS[0].dir, uid, &mut seen))?;
     return Ok(root_dir);
 }
 
