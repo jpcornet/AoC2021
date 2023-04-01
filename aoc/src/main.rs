@@ -40,6 +40,7 @@ struct Day {
 // all puzzle days. Note that the puzzle number should be the first number in the directory name.
 const DAYS: &'static [Day] = &[
     Day{ dir: "day1_sonar_sweep", solve: day1_sonar_sweep::solve },
+    Day{ dir: "day2_dive", solve: day2_dive::solve },
 ];
 
 fn main() {
@@ -60,7 +61,7 @@ fn main() {
     // which puzzles to run
     if args.all {
         run_puzzles(rootdir, args.input, &DAYS);
-    } else if args.puzzle.len() == 0 {
+    } else if args.puzzle.is_empty() {
         let puzzle = current_puzzle();
         match puzzle {
             Ok(d) => run_puzzles(rootdir, args.input, d),
@@ -108,16 +109,14 @@ fn to_days(puzzle: &Vec<u32>) -> Vec<Day> {
 
 // Convert current directory to Day ref, or error if not found.
 fn current_puzzle() -> std::io::Result<&'static [Day]> {
-    // convert directories in DAYS to a hash
-    let mut dirpos: HashMap<&str, usize> = HashMap::new();
+    let curdir = std::env::current_dir()?;
+    let curdir_str = curdir.to_string_lossy() + "/";
     for (index, d) in DAYS.into_iter().enumerate() {
-        dirpos.insert(d.dir, index);
+        if curdir_str.contains(&format!("/{}/", d.dir)) {
+            return Ok(&DAYS[index..=index]);
+        }
     }
-    let dindex = std::env::current_dir()?.ancestors().find_map(|d| dirpos.get(d.to_string_lossy().as_ref()));
-    match dindex {
-        Some(i) => Ok(&DAYS[*i..=*i]),
-        None => Err(std::io::Error::new(ErrorKind::NotFound, "Current directory is not a puzzle")),
-    }
+    Err(std::io::Error::new(ErrorKind::NotFound, "Current directory is not a puzzle"))
 }
 
 // run a list of puzzles
@@ -131,6 +130,13 @@ fn run_puzzles(rootdir: PathBuf, input: Option<String>, days: &[Day]) {
         fname.push(d.dir);
         fname.push("input");
         fname.push(&inputfile);
+        let meta = fs::metadata(&fname);
+        match meta {
+            Err(e) if e.kind() == ErrorKind::NotFound => download_input(&d.dir, &fname),
+            Err(e) => panic!("Error fetching {}: {e}", fname.to_string_lossy()),
+            Ok(m) if !m.is_file() => panic!("{} is not a file, but a {:?}", fname.to_string_lossy(), m),
+            _ => (),
+        };
         let fh = File::open(&fname);
         if let Err(e) = fh {
             eprintln!("Error: cannot open file {} for exercise {}: {e}", fname.to_string_lossy(), d.dir);
@@ -139,6 +145,10 @@ fn run_puzzles(rootdir: PathBuf, input: Option<String>, days: &[Day]) {
         let er = ExRunner::run(d.dir.to_string(), d.solve, BufReader::new(fh.unwrap()));
         er.print_raw();
     }
+}
+
+fn download_input(dirname: &str, target: &PathBuf) {
+    println!("In download_input for dirname={}, target={}", dirname, target.to_string_lossy());
 }
 
 // libc-specific: get access to uid

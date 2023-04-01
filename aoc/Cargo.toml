@@ -10,4 +10,5 @@ edition = "2021"
 [dependencies]
 exrunner = { path = "../exrunner" }
 day1_sonar_sweep = { path = "../day1_sonar_sweep" }
+day2_dive = { path = "../day2_dive" }
 clap = { version = "4.1.14", features = ["derive"] }
