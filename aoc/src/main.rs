@@ -24,10 +24,10 @@ struct Args {
     puzzle: Vec<u32>,
 }
 
-pub const YEAR: u16 = 2021;
+const YEAR: u16 = 2021;
 
 // all puzzle days. Note that the puzzle number should be the first number in the directory name.
-pub const DAYS: &'static [Day] = &[
+const DAYS: &'static [Day] = &[
     Day{ dir: "day1_sonar_sweep", solve: day1_sonar_sweep::solve },
     Day{ dir: "day2_dive", solve: day2_dive::solve },
 ];
