@@ -184,3 +184,15 @@ fn find_in_ancestors(startdir: PathBuf, target: &str, uid: u32, seen: &mut HashM
     // if we get here, we didn't find it
     Err(std::io::Error::new(ErrorKind::NotFound, "Searched all the way to the top, nothing found"))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_first_number() {
+        assert_eq!(first_number("foo42bar"), "42");
+        assert_eq!(first_number("123"), "123");
+        assert_eq!(first_number("yolo"), "");
+    }
+}
