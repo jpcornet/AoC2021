@@ -7,7 +7,44 @@ use std::{fs, env};
 use std::io::Read;
 use std::os::unix::fs::MetadataExt;
 use reqwest;
+use clap::{Args, Parser};
 use std::process::exit;
+
+/// command line tool to run Advent of Code puzzles and display output and timings
+///
+/// This tool will run the Advent of Code puzzles, by default the latest one or the
+/// one given on the command line, or the one in the subdirectory where you are.
+/// Will give "raw" output for individual puzzles or present the results in a table,
+/// together with timing info.
+#[derive(Parser, Debug)]
+#[command(author, version = None)]
+pub struct CliArgs {
+    /// Run all puzzles
+    #[arg(short, long)]
+    pub all: bool,
+
+    /// input file name (default: input.txt)
+    #[arg(short, long)]
+    pub input: Option<String>,
+
+    #[command(flatten)]
+    format: OutputFormat,
+
+    /// which puzzle(s) to run
+    pub puzzle: Vec<u32>,
+}
+
+#[derive(Args, Debug)]
+#[group(required = false, multiple = false)]
+struct OutputFormat {
+    /// Output raw. Default unless --all is given.
+    #[arg(short, long)]
+    raw: bool,
+
+    /// Output in table form.
+    #[arg(short, long, group="format")]
+    table: bool,
+}
 
 #[derive(Clone)]
 pub struct Day {
@@ -61,9 +98,9 @@ pub fn current_puzzle(days: &'static [Day]) -> std::io::Result<&'static [Day]> {
 }
 
 // run a list of puzzles
-pub fn run_puzzles(rootdir: PathBuf, input: Option<String>, days: &[Day], year: u16) {
+pub fn run_puzzles(rootdir: PathBuf, args: &CliArgs, days: &[Day], year: u16) {
     let defaultinput = String::from("input.txt");
-    let inputfile  = input.as_ref().unwrap_or(&defaultinput);
+    let inputfile  = args.input.as_ref().unwrap_or(&defaultinput);
     for d in days {
         let mut fname = rootdir.clone();
         fname.push(d.dir);
@@ -71,7 +108,7 @@ pub fn run_puzzles(rootdir: PathBuf, input: Option<String>, days: &[Day], year: 
         fname.push(inputfile);
         let meta = fs::metadata(&fname);
         match meta {
-            Err(e) if e.kind() == ErrorKind::NotFound && input.is_none() => download_input(&rootdir, &d.dir, &fname, year),
+            Err(e) if e.kind() == ErrorKind::NotFound && args.input.is_none() => download_input(&rootdir, &d.dir, &fname, year),
             Err(e) => panic!("Error fetching {}: {e}", fname.to_string_lossy()),
             Ok(m) if !m.is_file() => panic!("{} is not a file, but a {:?}", fname.to_string_lossy(), m),
             _ => (),

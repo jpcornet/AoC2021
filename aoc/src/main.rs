@@ -1,28 +1,7 @@
-use clap::{CommandFactory, Parser};
+use clap::{Parser, CommandFactory};
 use std::process::exit;
 use std::io::ErrorKind;
 use aoc::*;
-
-/// command line tool to run Advent of Code puzzles and display output and timings
-/// 
-/// This tool will run the Advent of Code puzzles, by default the latest one or the
-/// one given on the command line, or the one in the subdirectory where you are.
-/// Will give "raw" output for individual puzzles or present the results in a table,
-/// together with timing info.
-#[derive(Parser, Debug)]
-#[command(author, version = None)]
-struct Args {
-    /// Run all puzzles
-    #[arg(short, long)]
-    all: bool,
-
-    /// input file name (default: input.txt)
-    #[arg(short, long)]
-    input: Option<String>,
-
-    /// which puzzle(s) to run
-    puzzle: Vec<u32>,
-}
 
 const YEAR: u16 = 2021;
 
@@ -33,10 +12,10 @@ const DAYS: &'static [Day] = &[
 ];
 
 fn main() {
-    let args = Args::parse();
+    let args = CliArgs::parse();
     // reject "--all" and explicit puzzle numbers
-    if args.all && args.puzzle.len() > 0 {
-        let mut cmd = Args::command();
+    if args.all && !args.puzzle.is_empty() {
+        let mut cmd = CliArgs::command();
         cmd.error(clap::error::ErrorKind::ArgumentConflict,
             "Cannot use --all and explicit puzzle numbers.")
             .exit();
@@ -49,19 +28,19 @@ fn main() {
     let rootdir = rootdir.unwrap();
     // which puzzles to run
     if args.all {
-        run_puzzles(rootdir, args.input, &DAYS, YEAR);
-    } else if args.puzzle.is_empty() {
+        run_puzzles(rootdir, &args, &DAYS, YEAR);
+    } else if !args.puzzle.is_empty() {
+        run_puzzles(rootdir, &args, &to_days(&args.puzzle, &DAYS), YEAR);
+    } else {
         let puzzle = current_puzzle(&DAYS);
         match puzzle {
-            Ok(d) => run_puzzles(rootdir, args.input, d, YEAR),
-            Err(e) if e.kind() == ErrorKind::NotFound => run_puzzles(rootdir, args.input, &DAYS[DAYS.len()-1..], YEAR),
+            Ok(d) => run_puzzles(rootdir, &args, d, YEAR),
+            Err(e) if e.kind() == ErrorKind::NotFound => run_puzzles(rootdir, &args, &DAYS[DAYS.len()-1..], YEAR),
             Err(e) => {
                 eprintln!("Error searching for puzzle from current dir: {e}");
                 exit(1);
             },
         };
-    } else {
-        run_puzzles(rootdir, args.input, &to_days(&args.puzzle, &DAYS), YEAR);
     }
 }
 
