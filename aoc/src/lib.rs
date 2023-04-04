@@ -1,14 +1,18 @@
 use std::collections::{HashMap, hash_map::Entry};
 use std::io::{BufReader, ErrorKind};
 use std::fs::File;
-use exrunner::ExRunner;
 use std::path::PathBuf;
 use std::{fs, env};
 use std::io::Read;
 use std::os::unix::fs::MetadataExt;
+use std::time::Duration;
+use std::process::exit;
 use reqwest;
 use clap::{Args, Parser};
-use std::process::exit;
+use comfy_table::Table;
+use comfy_table::presets::UTF8_FULL;
+use comfy_table::modifiers::UTF8_ROUND_CORNERS;
+use exrunner::ExRunner;
 
 /// command line tool to run Advent of Code puzzles and display output and timings
 ///
@@ -101,7 +105,27 @@ pub fn current_puzzle(days: &'static [Day]) -> std::io::Result<&'static [Day]> {
 pub fn run_puzzles(rootdir: PathBuf, args: &CliArgs, days: &[Day], year: u16) {
     let defaultinput = String::from("input.txt");
     let inputfile  = args.input.as_ref().unwrap_or(&defaultinput);
-    for d in days {
+    // determine output format, raw or table
+    let f_raw;
+    let f_table;
+    if args.format.raw || args.format.table {
+        f_raw = args.format.raw;
+        f_table = args.format.table;
+    } else if args.all {
+        f_table = true;
+        f_raw = false;
+    } else {
+        f_table = false;
+        f_raw = true;
+    }
+    let mut table = Table::new();
+    if f_table {
+        table.load_preset(UTF8_FULL)
+            .apply_modifier(UTF8_ROUND_CORNERS);
+    }
+    table.set_header(vec!["", "part1", "part2", "parse", "time1", "time2", "close"]);
+    let mut total_time = Duration::from_secs(0);
+    for (index, d) in days.iter().enumerate() {
         let mut fname = rootdir.clone();
         fname.push(d.dir);
         fname.push("input");
@@ -119,7 +143,31 @@ pub fn run_puzzles(rootdir: PathBuf, args: &CliArgs, days: &[Day], year: u16) {
             continue;
         }
         let er = ExRunner::run(d.dir.to_string(), d.solve, BufReader::new(fh.unwrap()));
-        er.print_raw();
+        total_time += er.totaltime().unwrap_or(Duration::from_secs(0));
+        if f_raw {
+            if index > 0 {
+                println!("---");
+            }
+            er.print_raw();
+        }
+        if f_table {
+            let mut row = vec![d.dir.to_string()];
+            let mut answers: Vec<String> = er.answ().into_iter().map(|x| x.unwrap_or(String::from(""))).collect();
+            row.append(&mut answers);
+            let mut times: Vec<String> = [er.parsetime(), er.time1(), er.time2(), er.cleanuptime()].iter()
+                .map(|x| if let Some(d) = x { format!("{:?}", d) } else { String::from("") }).collect();
+            row.append(&mut times);
+            table.add_row(row);
+        }
+    }
+    if f_table {
+        println!("{table}");
+    }
+    if days.len() > 1 {
+        if f_raw {
+            println!("===");
+        }
+        println!("Total puzzles runtime: {:?}", total_time);
     }
 }
 
