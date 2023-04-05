@@ -5,4 +5,5 @@ members = [
     "exrunner",
     "day1_sonar_sweep",
     "day2_dive",
+    "day3_binary_diagnostic",
 ]

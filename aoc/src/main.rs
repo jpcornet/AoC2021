@@ -9,6 +9,7 @@ const YEAR: u16 = 2021;
 const DAYS: &'static [Day] = &[
     Day{ dir: "day1_sonar_sweep", solve: day1_sonar_sweep::solve },
     Day{ dir: "day2_dive", solve: day2_dive::solve },
+    Day{ dir: "day3_binary_diagnostic", solve: day3_binary_diagnostic::solve },
 ];
 
 fn main() {
