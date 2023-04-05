@@ -100,21 +100,21 @@ impl<'a> ExRunner<'a> {
                 }
             }
             if let Some(pt) = self.parsetime {
-                println!("Parsing took: {:?}", pt)
+                println!("Parsing took: {}", duration_format(&pt))
             }
             let ordinals = vec!["first", "second"];
             let runtimes = vec![self.time1(), self.time2()];
             for i in 0..=1 {
                 if let Some(rt) = runtimes[i] {
-                    println!("Calculating {} answer took: {:?}", ordinals[i], rt);
+                    println!("Calculating {} answer took: {}", ordinals[i], duration_format(&rt));
                 }
             }
         }
         if let Some(ct) = self.cleanuptime() {
-            println!("Cleanup took: {:?}", ct);
+            println!("Cleanup took: {}", duration_format(&ct));
         }
         if let Some(tt) = self.totaltime() {
-            println!("Total exercise time: {:?}", tt);
+            println!("Total exercise time: {}", duration_format(&tt));
         }
     }
 }
@@ -133,11 +133,39 @@ impl<'a> Default for ExRunner<'a> {
     }
 }
 
+// Format a duration with 3 digits precision only... unless it's over 1000 seconds then all seconds are shown.
+pub fn duration_format(d: &Duration) -> String {
+    let mut nanos = d.as_nanos();
+    let units = ["ns", "µs", "ms", "s"];
+    let mut uindex: usize = 0;
+    let mut fraction: u16 = 0;
+    while nanos >= 1000 && uindex < units.len() - 1 {
+        fraction = (nanos % 1000) as u16;
+        nanos /= 1000;
+        uindex += 1;
+    }
+    let mut answ = nanos.to_string();
+    if answ.len() < 3 && fraction != 0 {
+        // take 1 or 2 digits from fraction.
+        let cutoff = if answ.len() == 1 { 10 } else { 100 };
+        if fraction % cutoff >= cutoff / 2 {
+            fraction += cutoff / 2;
+        }
+        let zeros = String::from(if fraction < 10 { "00" } else if fraction < 100 { "0" } else { "" });
+        let fr_str = zeros + &fraction.to_string();
+        answ += ".";
+        answ += &fr_str[..(4-answ.len())];
+    }
+    answ += units[uindex];
+    answ
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::io::BufReader;
     use std::thread;
+    use std::time::Duration;
 
     #[test]
     fn create_exrunner() {
@@ -207,4 +235,16 @@ mod tests {
         let _run = ExRunner::run("double_part1".to_string(), do_double_part1, input);
     }
 
+    #[test]
+    fn test_d_format() {
+        assert_eq!(duration_format(&Duration::new(0, 10)), "10ns");
+        assert_eq!(duration_format(&Duration::new(0, 999)), "999ns");
+        assert_eq!(duration_format(&Duration::new(0, 1000)), "1µs");
+        assert_eq!(duration_format(&Duration::new(0, 1140)), "1.14µs");
+        assert_eq!(duration_format(&Duration::new(0, 3028)), "3.03µs");
+        assert_eq!(duration_format(&Duration::new(0, 2123456)), "2.12ms");
+        assert_eq!(duration_format(&Duration::from_millis(789)), "789ms");
+        assert_eq!(duration_format(&Duration::from_millis(2789)), "2.79s");
+        assert_eq!(duration_format(&Duration::new(12345, 999000000)), "12345s"); // note: not technically correctly rounded
+    }
 }

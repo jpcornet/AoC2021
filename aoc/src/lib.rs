@@ -12,7 +12,7 @@ use clap::{Args, Parser};
 use comfy_table::Table;
 use comfy_table::presets::UTF8_FULL;
 use comfy_table::modifiers::UTF8_ROUND_CORNERS;
-use exrunner::ExRunner;
+use exrunner::{ExRunner, duration_format};
 
 /// command line tool to run Advent of Code puzzles and display output and timings
 ///
@@ -155,7 +155,7 @@ pub fn run_puzzles(rootdir: PathBuf, args: &CliArgs, days: &[Day], year: u16) {
             let mut answers: Vec<String> = er.answ().into_iter().map(|x| x.unwrap_or(String::from(""))).collect();
             row.append(&mut answers);
             let mut times: Vec<String> = [er.parsetime(), er.time1(), er.time2(), er.cleanuptime()].iter()
-                .map(|x| if let Some(d) = x { format!("{:?}", d) } else { String::from("") }).collect();
+                .map(|x| if let Some(d) = x { duration_format(d) } else { String::from("") }).collect();
             row.append(&mut times);
             table.add_row(row);
         }
