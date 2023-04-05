@@ -1,9 +1,8 @@
 use std::collections::{HashMap, hash_map::Entry};
-use std::io::{BufReader, ErrorKind};
+use std::io::{Read, BufReader, ErrorKind};
 use std::fs::File;
 use std::path::PathBuf;
 use std::{fs, env};
-use std::io::Read;
 use std::os::unix::fs::MetadataExt;
 use std::time::Duration;
 use std::process::exit;
