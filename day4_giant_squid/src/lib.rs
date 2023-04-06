@@ -99,6 +99,7 @@ pub fn solve(input: impl BufRead, er: &mut ExRunner) {
     let mut pi = PuzzleInput::parse(input);
     er.parse_done();
     let mut num_drawn: HashMap<u8, ()> = HashMap::new();
+    let mut boards_won: HashMap<usize, ()> = HashMap::new();
     'draw: for d in pi.draw {
         // beware of duplicate numbers
         let num_entry = num_drawn.entry(d);
@@ -112,9 +113,18 @@ pub fn solve(input: impl BufRead, er: &mut ExRunner) {
                         // We have a winner
                         // Assume no other simultaneous winner exists
                         println!("When drawing {d}, winning board is {}", np.board);
-                        let unmarked_sum: u32 = pi.boards[np.board].filter_map(|i| if num_drawn.contains_key(&i) { None } else { Some(i as u32) }).sum();
-                        er.part1(unmarked_sum*(d as u32), Some(&format!("unmarked_sum={unmarked_sum}, drawn={d}, board={}", np.board)));
-                        break 'draw;
+                        if boards_won.is_empty() {
+                            // do part 1
+                            let unmarked_sum: u32 = pi.boards[np.board].filter_map(|i| if num_drawn.contains_key(&i) { None } else { Some(i as u32) }).sum();
+                            er.part1(unmarked_sum*(d as u32), Some(&format!("unmarked_sum={unmarked_sum}, drawn={d}, board={}", np.board)));
+                        }
+                        boards_won.insert(np.board, ());
+                        if boards_won.len() == pi.boards.len() {
+                            println!("This {} is the last board to win", np.board);
+                            let unmarked_sum: u32 = pi.boards[np.board].filter_map(|i| if num_drawn.contains_key(&i) { None } else { Some(i as u32) }).sum();
+                            er.part2(unmarked_sum*(d as u32), Some("Score of last board to win"));
+                            break 'draw;
+                        }
                     }
                 }
             }
@@ -169,6 +179,6 @@ mod tests {
         let er = ExRunner::run("day 4 - giant squid".to_string(), solve, test_input());
         er.print_raw();
         assert_eq!(er.answ()[0], Some("4512".to_string()));
-        //assert_eq!(er.answ()[1], Some("".to_string()));
+        assert_eq!(er.answ()[1], Some("1924".to_string()));
     }
 }
