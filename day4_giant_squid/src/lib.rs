@@ -1,14 +1,12 @@
 use exrunner::ExRunner;
 use std::{io, io::BufRead, collections::{HashMap, hash_map::Entry}};
 
-#[derive(PartialEq, Debug, Clone, Copy)]
+#[derive(PartialEq, Debug)]
 struct Board {
     numbers: [[u8; 5]; 5],
     // rows and cols counts the number of marked numbers in each row, col
     rows: [u8; 5],
     cols: [u8; 5],
-    // cursor to implement an iterator over the numbers
-    cursor: [u8; 2],
 }
 
 impl Board {
@@ -38,26 +36,35 @@ impl Board {
             numbers,
             rows: [0; 5],
             cols: [0; 5],
-            cursor: [0; 2],
         }
+    }
+
+    fn iter(self: &Board) -> BoardIterator {
+        BoardIterator { b: self, cursor: [0, 0] }
     }
 }
 
+struct BoardIterator<'a> {
+    b: &'a Board,
+    // cursor to implement an iterator over the numbers
+    cursor: [u8; 2],
+}
+
 // Iterate over all the numbers in the board
-impl Iterator for Board {
+impl<'a> Iterator for BoardIterator<'a> {
     type Item = u8;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.cursor[1] as usize >= self.numbers.len() {
+        if self.cursor[1] as usize >= self.b.numbers.len() {
             return None;
-        } else if self.cursor[0] as usize >= self.numbers[self.cursor[1] as usize].len() {
+        } else if self.cursor[0] as usize >= self.b.numbers[self.cursor[1] as usize].len() {
             self.cursor[0] = 0;
             self.cursor[1] += 1;
-            if self.cursor[1] as usize >= self.numbers.len() {
+            if self.cursor[1] as usize >= self.b.numbers.len() {
                 return None;
             }
         }
-        let i: Self::Item = self.numbers[self.cursor[1] as usize][self.cursor[0] as usize];
+        let i: Self::Item = self.b.numbers[self.cursor[1] as usize][self.cursor[0] as usize];
         self.cursor[0] += 1;
         return Some(i);
     }
@@ -112,16 +119,15 @@ pub fn solve(input: impl BufRead, er: &mut ExRunner) {
                     if pi.boards[np.board].rows[np.row as usize] == 5 || pi.boards[np.board].cols[np.col as usize] == 5 {
                         // We have a winner
                         // Assume no other simultaneous winner exists
-                        println!("When drawing {d}, winning board is {}", np.board);
                         if boards_won.is_empty() {
                             // do part 1
-                            let unmarked_sum: u32 = pi.boards[np.board].filter_map(|i| if num_drawn.contains_key(&i) { None } else { Some(i as u32) }).sum();
+                            let unmarked_sum: u32 = pi.boards[np.board].iter().filter_map(|i| if num_drawn.contains_key(&i) { None } else { Some(i as u32) }).sum();
                             er.part1(unmarked_sum*(d as u32), Some(&format!("unmarked_sum={unmarked_sum}, drawn={d}, board={}", np.board)));
                         }
                         boards_won.insert(np.board, ());
                         if boards_won.len() == pi.boards.len() {
                             println!("This {} is the last board to win", np.board);
-                            let unmarked_sum: u32 = pi.boards[np.board].filter_map(|i| if num_drawn.contains_key(&i) { None } else { Some(i as u32) }).sum();
+                            let unmarked_sum: u32 = pi.boards[np.board].iter().filter_map(|i| if num_drawn.contains_key(&i) { None } else { Some(i as u32) }).sum();
                             er.part2(unmarked_sum*(d as u32), Some("Score of last board to win"));
                             break 'draw;
                         }
@@ -146,7 +152,7 @@ mod tests {
 6 10  3 18  5
 1 12 20 15 19
 ");
-       assert_eq!(b, Board { numbers: [ [ 22, 13, 17, 11, 0 ], [8, 2, 23, 4, 24], [21, 9, 14, 16, 7], [6, 10, 3, 18, 5], [1, 12, 20, 15, 19]], rows: [0; 5], cols: [0; 5], cursor: [0; 2]});
+       assert_eq!(b, Board { numbers: [ [ 22, 13, 17, 11, 0 ], [8, 2, 23, 4, 24], [21, 9, 14, 16, 7], [6, 10, 3, 18, 5], [1, 12, 20, 15, 19]], rows: [0; 5], cols: [0; 5]});
     }
 
     fn test_input() -> BufReader<&'static [u8]> {
