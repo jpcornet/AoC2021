@@ -126,7 +126,6 @@ pub fn solve(input: impl BufRead, er: &mut ExRunner) {
                         }
                         boards_won.insert(np.board, ());
                         if boards_won.len() == pi.boards.len() {
-                            println!("This {} is the last board to win", np.board);
                             let unmarked_sum: u32 = pi.boards[np.board].iter().filter_map(|i| if num_drawn.contains_key(&i) { None } else { Some(i as u32) }).sum();
                             er.part2(unmarked_sum*(d as u32), Some("Score of last board to win"));
                             break 'draw;
