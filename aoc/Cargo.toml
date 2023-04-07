@@ -16,3 +16,4 @@ day1_sonar_sweep = { path = "../day1_sonar_sweep" }
 day2_dive = { path = "../day2_dive" }
 day3_binary_diagnostic = { path = "../day3_binary_diagnostic" }
 day4_giant_squid = { path = "../day4_giant_squid" }
+day5_hydrothermal_venture = { path = "../day5_hydrothermal_venture" }
