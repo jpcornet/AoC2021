@@ -44,10 +44,7 @@ fn parse_input(input: impl BufRead) -> Vec<Line> {
     input.lines().map(|l| l.expect("Error reading input").parse().expect("Error parsing input")).collect()
 }
 
-pub fn solve(input: impl BufRead, er: &mut ExRunner) {
-    let lines = parse_input(input);
-    er.parse_done();
-    // determine overlap for part1
+fn doublepoints(lines: &Vec<Line>, do_diagonal: bool) -> i32 {
     let mut online: HashMap<Point, bool> = HashMap::new();
     let mut double_points = 0;
     for l in lines {
@@ -63,7 +60,13 @@ pub fn solve(input: impl BufRead, er: &mut ExRunner) {
             dx = if x > x2 { -1 } else { 1 };
             dy = 0;
         } else {
-            continue;
+            if !do_diagonal {
+                continue;
+            }
+            dx = if x > x2 { -1 } else { 1 };
+            dy = if y > y2 { -1 } else { 1 };
+            // make sure lines are exactly 45 degrees
+            assert_eq!((x-x2)*dx, (y-y2)*dy);
         }
         loop {
             online.entry(Point{ x, y})
@@ -76,7 +79,14 @@ pub fn solve(input: impl BufRead, er: &mut ExRunner) {
             y += dy;
         }
     }
-    er.part1(double_points, None);
+    double_points
+}
+
+pub fn solve(input: impl BufRead, er: &mut ExRunner) {
+    let lines = parse_input(input);
+    er.parse_done();
+    er.part1(doublepoints(&lines, false), None);
+    er.part2(doublepoints(&lines, true), None);
 }
 
 #[cfg(test)]
@@ -105,6 +115,7 @@ mod tests {
         let er = ExRunner::run("day 5 - hydrothermal venture".to_string(), solve, test_input());
         er.print_raw();
         assert_eq!(er.answ()[0], Some("5".to_string()));
+        assert_eq!(er.answ()[1], Some("12".to_string()));
     }
 
 }
