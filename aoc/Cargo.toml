@@ -18,3 +18,4 @@ day3_binary_diagnostic = { path = "../day3_binary_diagnostic" }
 day4_giant_squid = { path = "../day4_giant_squid" }
 day5_hydrothermal_venture = { path = "../day5_hydrothermal_venture" }
 day6_lanternfish = { path = "../day6_lanternfish" }
+day7_treachery_of_whales = { path = "../day7_treachery_of_whales" }
