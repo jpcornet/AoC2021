@@ -83,6 +83,10 @@ fn find_7seg_pattern(ssd: &SSDisplay) -> HashMap<u8, u8> {
     let mut opt_seg_c = None;
     let mut opt_seg_e = None;
     let mut opt_seg_f = None;
+    // just for reference (but not needed here):
+    // seg_a is simply pattern for 7 minus seg_cf
+    // seg_d is the one that's missing in 0 or seg_bd minus seg_b
+    // seg_g is the one that is left.
     for pat in ssd.patterns.iter().filter(|p| p.count_ones() == 6) {
         if *pat & seg_cf != seg_cf {
             seg2num.insert(*pat, 6);
