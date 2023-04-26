@@ -8,20 +8,21 @@ fn parse(input: impl BufRead) -> Vec<Vec<u8>> {
 pub fn solve(input: impl BufRead, er: &mut ExRunner) {
     let heightmap = parse(input);
     er.parse_done();
-    let mut total_risk = 0;
+    let mut total_risk: u32 = 0;
     for y in 0 .. heightmap.len() {
         for x in 0 .. heightmap[y].len() {
             let h = heightmap[y][x];
-            if y > 0 && h > heightmap[y-1][x] {
+            if y > 0 && h >= heightmap[y-1][x] {
                 continue;
-            } else if x > 0 && h > heightmap[y][x-1] {
+            } else if x > 0 && h >= heightmap[y][x-1] {
                 continue;
-            } else if y < heightmap.len() - 1 && h > heightmap[y+1][x] {
+            } else if y < heightmap.len() - 1 && h >= heightmap[y+1][x] {
                 continue;
-            } else if x < heightmap[y].len() - 1 && h > heightmap[y][x+1] {
+            } else if x < heightmap[y].len() - 1 && h >= heightmap[y][x+1] {
                 continue;
             }
-            total_risk += h + 1;
+            println!("Low point at {x},{y} = {h}");
+            total_risk += (h + 1) as u32;
         }
     }
     er.part1(total_risk, None);
