@@ -44,8 +44,7 @@ fn parse_input(input: impl BufRead) -> Vec<Line> {
     input.lines().map(|l| l.expect("Error reading input").parse().expect("Error parsing input")).collect()
 }
 
-fn doublepoints(lines: &Vec<Line>, do_diagonal: bool) -> i32 {
-    let mut online: HashMap<Point, bool> = HashMap::new();
+fn doublepoints(lines: &Vec<Line>, online: &mut HashMap<Point, bool>) -> i32 {
     let mut double_points = 0;
     for l in lines {
         let mut x = l.start.x;
@@ -60,9 +59,6 @@ fn doublepoints(lines: &Vec<Line>, do_diagonal: bool) -> i32 {
             dx = if x > x2 { -1 } else { 1 };
             dy = 0;
         } else {
-            if !do_diagonal {
-                continue;
-            }
             dx = if x > x2 { -1 } else { 1 };
             dy = if y > y2 { -1 } else { 1 };
             // make sure lines are exactly 45 degrees
@@ -85,8 +81,20 @@ fn doublepoints(lines: &Vec<Line>, do_diagonal: bool) -> i32 {
 pub fn solve(input: impl BufRead, er: &mut ExRunner) {
     let lines = parse_input(input);
     er.parse_done();
-    er.part1(doublepoints(&lines, false), None);
-    er.part2(doublepoints(&lines, true), None);
+    let mut hvlines: Vec<Line> = Vec::new();
+    let mut dlines: Vec<Line> = Vec::new();
+    for l in lines {
+        if l.start.x == l.end.x || l.start.y == l.end.y {
+            hvlines.push(l);
+        } else {
+            dlines.push(l);
+        }
+    }
+    let mut online: HashMap<Point, bool> = HashMap::new();
+    let part1 = doublepoints(&hvlines, &mut online);
+    er.part1(part1, None);
+    let part2 = part1 + doublepoints(&dlines, &mut online);
+    er.part2(part2, None);
 }
 
 #[cfg(test)]
