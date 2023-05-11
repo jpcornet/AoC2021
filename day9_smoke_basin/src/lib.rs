@@ -21,7 +21,7 @@ pub fn solve(input: impl BufRead, er: &mut ExRunner) {
             } else if x < heightmap[y].len() - 1 && h >= heightmap[y][x+1] {
                 continue;
             }
-            println!("Low point at {x},{y} = {h}");
+            er.debugln(&format!("Low point at {x},{y} = {h}"));
             total_risk += (h + 1) as u32;
         }
     }

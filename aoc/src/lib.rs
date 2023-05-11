@@ -11,7 +11,7 @@ use clap::{Args, Parser};
 use comfy_table::Table;
 use comfy_table::presets::UTF8_FULL;
 use comfy_table::modifiers::UTF8_ROUND_CORNERS;
-use exrunner::{ExRunner, duration_format};
+use exrunner::{ExRunner, duration_format, ExCtx};
 
 /// command line tool to run Advent of Code puzzles and display output and timings
 ///
@@ -141,7 +141,11 @@ pub fn run_puzzles(rootdir: PathBuf, args: &CliArgs, days: &[Day], year: u16) {
             eprintln!("Error: cannot open file {} for exercise {}: {e}", fname.to_string_lossy(), d.dir);
             continue;
         }
-        let er = ExRunner::run(d.dir.to_string(), d.solve, BufReader::new(fh.unwrap()));
+        let mut ct = ExCtx::new(d.solve, BufReader::new(fh.unwrap()));
+        if f_raw {
+            ct.with_stderr();
+        }
+        let er = ct.do_run(d.dir.to_string());
         total_time += er.totaltime().unwrap_or(Duration::from_secs(0));
         if f_raw {
             if index > 0 {
