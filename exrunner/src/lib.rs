@@ -59,6 +59,12 @@ impl<'a, 'b> ExRunner<'a, 'b> {
         ct.do_run(name)
     }
 
+    pub fn run_stderr<T: BufRead>(name: String, f: fn(T, &mut ExRunner), input: T) -> ExRunner<'a, 'b> {
+        let mut ct = ExCtx::new(f, input);
+        ct.with_stderr();
+        ct.do_run(name)
+    }
+
     pub fn name(&self) -> &String {
         &self.name
     }
