@@ -79,7 +79,7 @@ mod tests {
 
     #[test]
     fn test_solve() {
-        let er = ExRunner::run_stderr("day 9 - smoke basin".to_string(), solve, test_input());
+        let er = ExRunner::run("day 9 - smoke basin".to_string(), solve, test_input());
         er.print_raw();
         assert_eq!(er.answ()[0], Some("15".to_string()));
         assert_eq!(er.answ()[1], Some("1134".to_string()));

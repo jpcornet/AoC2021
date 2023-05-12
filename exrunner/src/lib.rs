@@ -29,6 +29,10 @@ impl<'a, T: BufRead> ExCtx<'a, T> {
         self.with_debugwrite(io::stderr().lock())
     }
 
+    pub fn with_stdout(&mut self) -> &Self {
+        self.with_debugwrite(io::stdout().lock())
+    }
+
     pub fn with_debugwrite<'b>(&'b mut self, wr: impl Write + 'a) -> &'b Self
         where 'a: 'b
     {
@@ -55,13 +59,8 @@ impl<'a, 'b> ExRunner<'a, 'b> {
     }
 
     pub fn run<T: BufRead>(name: String, f: fn(T, &mut ExRunner), input: T) -> ExRunner<'a, 'b> {
-        let ct = ExCtx::new(f, input);
-        ct.do_run(name)
-    }
-
-    pub fn run_stderr<T: BufRead>(name: String, f: fn(T, &mut ExRunner), input: T) -> ExRunner<'a, 'b> {
         let mut ct = ExCtx::new(f, input);
-        ct.with_stderr();
+        ct.with_stdout();
         ct.do_run(name)
     }
 

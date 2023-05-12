@@ -120,7 +120,7 @@ mod tests {
 
     #[test]
     fn test_solve() {
-        let er = ExRunner::run_stderr("day 10 - syntax scoring".to_string(), solve, test_input());
+        let er = ExRunner::run("day 10 - syntax scoring".to_string(), solve, test_input());
         er.print_raw();
         assert_eq!(er.answ()[0], Some("26397".to_string()));
         assert_eq!(er.answ()[1], Some("288957".to_string()));
