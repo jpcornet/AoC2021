@@ -53,8 +53,17 @@ pub fn solve(input: impl BufRead, er: &mut ExRunner) {
     for _ in 1..=100 {
         flashes += do_one_step(&mut octopii);
     }
+    let mut step = 100;
+    let total_octopii: i32 = (octopii.len() * octopii[0].len()) as i32;
     er.debugln(&format!("Got: {:?}", octopii));
     er.part1(flashes, Some("Number of flashes"));
+    loop {
+        step += 1;
+        if do_one_step(&mut octopii) == total_octopii {
+            er.part2(step, Some("All flashing at once on step"));
+            break;
+        }
+    }
 }
 
 #[cfg(test)]
@@ -82,5 +91,6 @@ mod tests {
         let er = ExRunner::run("day 11 - dumbo octopus".to_string(), solve, test_input());
         er.print_raw();
         assert_eq!(er.answ()[0], Some("1656".to_string()));
+        assert_eq!(er.answ()[1], Some("195".to_string()));
     }
 }
