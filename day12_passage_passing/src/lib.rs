@@ -40,7 +40,6 @@ pub fn solve(input: impl BufRead, er: &mut ExRunner) {
             if node == "end" {
                 continue
             }
-            done = false;
             let cave = caves.get(node).expect(&format!("Error, bad cave {node}"));
             for nxt in &cave.to {
                 // we cannot go back to start
@@ -56,6 +55,10 @@ pub fn solve(input: impl BufRead, er: &mut ExRunner) {
                 let new_route = format!("{}{},{}", if sml_twice { "!" } else { "" }, r, nxt);
                 // addroutes contains Option<String> just to make it compatible with routes. It never contains None.
                 addroutes.push(Some(new_route));
+                // if the next step is not "end", we are not done yet
+                if nxt != "end" {
+                    done = false;
+                }
             }
             // replace this route with the first route found. Or any route. Or with "None" if there are no routes.
             *maybe_r = addroutes.pop().unwrap_or(None);
