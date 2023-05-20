@@ -26,6 +26,7 @@ pub fn solve(input: impl BufRead, er: &mut ExRunner) {
     er.parse_done();
     // routes will contain the list of possible routes, starts out with just "start". Add a comma for easier searching.
     // routes that do not work out are replace by None
+    // if we visited a small room twice, the string starts with "!," instead of ",".
     let mut routes = vec![Some(",start".to_string())];
     loop {
         let mut done = true;
@@ -42,12 +43,19 @@ pub fn solve(input: impl BufRead, er: &mut ExRunner) {
             done = false;
             let cave = caves.get(node).expect(&format!("Error, bad cave {node}"));
             for nxt in &cave.to {
-                // if it's a lowercase cave, make sure we haven't visited it already
-                if nxt.chars().all(|c| c.is_ascii_lowercase()) && r.contains(&(",".to_string() + nxt + ",")) {
+                // we cannot go back to start
+                if nxt == "start" {
                     continue;
                 }
+                // if it's a lowercase cave, make sure we haven't visited it already
+                let sml_twice = nxt.chars().all(|c| c.is_ascii_lowercase()) && r.contains(&(",".to_string() + nxt + ","));
+                // we can only visit one small room twice, so do not add this one if this is the second small room that we visit twice
+                if sml_twice && r.starts_with("!,") {
+                    continue;
+                }
+                let new_route = format!("{}{},{}", if sml_twice { "!" } else { "" }, r, nxt);
                 // addroutes contains Option<String> just to make it compatible with routes. It never contains None.
-                addroutes.push(Some(r.clone() + "," + nxt));
+                addroutes.push(Some(new_route));
             }
             // replace this route with the first route found. Or any route. Or with "None" if there are no routes.
             *maybe_r = addroutes.pop().unwrap_or(None);
@@ -57,9 +65,11 @@ pub fn solve(input: impl BufRead, er: &mut ExRunner) {
             break;
         }
     }
-    er.debugln(&format!("Complete routes: {:?}", routes));
-    let num = routes.iter().filter(|r| r.is_some()).count();
-    er.part1(num, None);
+    // er.debugln(&format!("All complete routes: {:?}", routes));
+    let num = routes.iter().filter(|r| r.is_some() && !r.as_ref().unwrap().starts_with("!,")).count();
+    er.part1(num, Some("all routes with small caves once"));
+    let num2 = routes.iter().filter(|r| r.is_some()).count();
+    er.part2(num2, Some("all possible routes"))
 }
 
 #[cfg(test)]
@@ -126,6 +136,7 @@ start-RW
         let er = ExRunner::run("day 12 - passage pathing".to_string(), solve, test_input1());
         er.print_raw();
         assert_eq!(er.answ()[0], Some("10".to_string()));
+        assert_eq!(er.answ()[1], Some("36".to_string()));
     }
 
     #[test]
@@ -133,6 +144,7 @@ start-RW
         let er = ExRunner::run("day 12 - passage pathing".to_string(), solve, test_input2());
         er.print_raw();
         assert_eq!(er.answ()[0], Some("19".to_string()));
+        assert_eq!(er.answ()[1], Some("103".to_string()));
     }
 
     #[test]
@@ -141,6 +153,7 @@ start-RW
         let er = ctx.do_run("day 12 - passage pathing".to_string());
         er.print_raw();
         assert_eq!(er.answ()[0], Some("226".to_string()));
+        assert_eq!(er.answ()[1], Some("3509".to_string()));
     }
 
 }
