@@ -21,13 +21,19 @@ fn parse(input: impl BufRead) -> HashMap<String, Cave> {
     ret
 }
 
+#[derive(Debug)]
+struct Route {
+    small_twice: bool,
+    route: String,
+}
+
 pub fn solve(input: impl BufRead, er: &mut ExRunner) {
     let caves = parse(input);
     er.parse_done();
     // routes will contain the list of possible routes, starts out with just "start".
     // routes that do not work out are replace by None
     // if we visited a small room twice, the string starts with "!"
-    let mut routes = vec![Some("start".to_string())];
+    let mut routes = vec![Some(Route{ small_twice: false, route: "start".to_string()})];
     let mut path1: usize = 0;
     let mut path2: usize = 0;
     while !routes.is_empty() {
@@ -39,7 +45,7 @@ pub fn solve(input: impl BufRead, er: &mut ExRunner) {
                 continue;
             }
             let r = maybe_r.as_ref().unwrap();
-            let node = r.rsplit(',').next().unwrap();
+            let node = r.route.rsplit(',').next().unwrap();
             if node == "end" {
                 panic!("Logic error, routes at end should not be on routes")
             }
@@ -49,8 +55,8 @@ pub fn solve(input: impl BufRead, er: &mut ExRunner) {
                 if nxt == "start" {
                     continue;
                 } else if nxt == "end" {
-                    //er.debugln(&format!("Route: {},{}", r, nxt));
-                    if r.starts_with("!") {
+                    //er.debugln(&format!("Route: {:?},{}", r, nxt));
+                    if r.small_twice {
                         path2 += 1;
                     } else {
                         path1 += 1;
@@ -59,12 +65,12 @@ pub fn solve(input: impl BufRead, er: &mut ExRunner) {
                     continue;
                 }
                 // if it's a lowercase cave, make sure we haven't visited it already
-                let sml_twice = nxt.chars().all(|c| c.is_ascii_lowercase()) && r.contains(&(",".to_string() + nxt + ","));
+                let sml_twice = nxt.chars().all(|c| c.is_ascii_lowercase()) && r.route.contains(&(",".to_string() + nxt + ","));
                 // we can only visit one small room twice, so do not add this one if this is the second small room that we visit twice
-                if sml_twice && r.starts_with("!") {
+                if sml_twice && r.small_twice {
                     continue;
                 }
-                let new_route = format!("{}{},{}", if sml_twice { "!" } else { "" }, r, nxt);
+                let new_route = Route { small_twice: r.small_twice | sml_twice, route: r.route.clone() + "," + nxt };
                 // addroutes contains Option<String> just to make it compatible with routes. It never contains None.
                 addroutes.push(Some(new_route));
             }
@@ -76,11 +82,11 @@ pub fn solve(input: impl BufRead, er: &mut ExRunner) {
                 nones += 1;
             }
         }
-        // only prune if we inserted enough nones
+        // only prune if we inserted enough Nones
         if nones * 10 > somes {
-            er.debugln(&format!("Routes before prune: {}. Nones={}, Somes={}", routes.len(), nones, somes));
+            //er.debugln(&format!("Routes before prune: {}. Nones={}, Somes={}", routes.len(), nones, somes));
             routes = routes.into_iter().filter(|x| x.is_some()).collect();
-            er.debugln(&format!("Routes after prune: {}", routes.len()));
+            //er.debugln(&format!("Routes after prune: {}", routes.len()));
         }
         routes.append(&mut addroutes);
     }
