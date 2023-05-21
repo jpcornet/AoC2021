@@ -30,8 +30,7 @@ pub fn solve(input: impl BufRead, er: &mut ExRunner) {
     let mut routes = vec![Some("start".to_string())];
     let mut path1: usize = 0;
     let mut path2: usize = 0;
-    loop {
-        let mut done = true;
+    while !routes.is_empty() {
         let mut addroutes = Vec::new();
         for maybe_r in &mut routes {
             if maybe_r.is_none() {
@@ -66,25 +65,13 @@ pub fn solve(input: impl BufRead, er: &mut ExRunner) {
                 let new_route = format!("{}{},{}", if sml_twice { "!" } else { "" }, r, nxt);
                 // addroutes contains Option<String> just to make it compatible with routes. It never contains None.
                 addroutes.push(Some(new_route));
-                // if the next step is not "end", we are not done yet
-                done = false;
             }
             // replace this route with the first route found. Or any route. Or with "None" if there are no routes.
             *maybe_r = addroutes.pop().unwrap_or(None);
         }
-        er.debugln(&format!("Number of routes before prune: {}", routes.len()));
-        // let last_set = routes.iter().enumerate().rev().filter_map(|(i, r)| { if r.is_some() { Some(i) } else { None } } ).next();
-        // if let Some(ls) = last_set {
-        //     routes.truncate(ls+1);
-        // }
         routes = routes.into_iter().filter(|x| x.is_some()).collect();
-        er.debugln(&format!("Number of routes after prune: {}", routes.len()));
         routes.append(&mut addroutes);
-        if done {
-            break;
-        }
     }
-    // er.debugln(&format!("All complete routes: {:?}", routes));
     er.part1(path1, Some("all routes with small caves once"));
     er.part2(path1 + path2, Some("all possible routes"));
 }
