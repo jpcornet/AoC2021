@@ -32,6 +32,8 @@ pub fn solve(input: impl BufRead, er: &mut ExRunner) {
     let mut path2: usize = 0;
     while !routes.is_empty() {
         let mut addroutes = Vec::new();
+        let mut somes: usize = 0;
+        let mut nones: usize = 0;
         for maybe_r in &mut routes {
             if maybe_r.is_none() {
                 continue;
@@ -68,8 +70,18 @@ pub fn solve(input: impl BufRead, er: &mut ExRunner) {
             }
             // replace this route with the first route found. Or any route. Or with "None" if there are no routes.
             *maybe_r = addroutes.pop().unwrap_or(None);
+            if maybe_r.is_some() {
+                somes += 1;
+            } else {
+                nones += 1;
+            }
         }
-        routes = routes.into_iter().filter(|x| x.is_some()).collect();
+        // only prune if we inserted enough nones
+        if nones * 10 > somes {
+            er.debugln(&format!("Routes before prune: {}. Nones={}, Somes={}", routes.len(), nones, somes));
+            routes = routes.into_iter().filter(|x| x.is_some()).collect();
+            er.debugln(&format!("Routes after prune: {}", routes.len()));
+        }
         routes.append(&mut addroutes);
     }
     er.part1(path1, Some("all routes with small caves once"));
