@@ -24,10 +24,12 @@ fn parse(input: impl BufRead) -> HashMap<String, Cave> {
 pub fn solve(input: impl BufRead, er: &mut ExRunner) {
     let caves = parse(input);
     er.parse_done();
-    // routes will contain the list of possible routes, starts out with just "start". Add a comma for easier searching.
+    // routes will contain the list of possible routes, starts out with just "start".
     // routes that do not work out are replace by None
-    // if we visited a small room twice, the string starts with "!," instead of ",".
-    let mut routes = vec![Some(",start".to_string())];
+    // if we visited a small room twice, the string starts with "!"
+    let mut routes = vec![Some("start".to_string())];
+    let mut path1: usize = 0;
+    let mut path2: usize = 0;
     loop {
         let mut done = true;
         let mut addroutes = Vec::new();
@@ -38,41 +40,53 @@ pub fn solve(input: impl BufRead, er: &mut ExRunner) {
             let r = maybe_r.as_ref().unwrap();
             let node = r.rsplit(',').next().unwrap();
             if node == "end" {
-                continue
+                panic!("Logic error, routes at end should not be on routes")
             }
             let cave = caves.get(node).expect(&format!("Error, bad cave {node}"));
             for nxt in &cave.to {
                 // we cannot go back to start
                 if nxt == "start" {
                     continue;
+                } else if nxt == "end" {
+                    //er.debugln(&format!("Route: {},{}", r, nxt));
+                    if r.starts_with("!") {
+                        path2 += 1;
+                    } else {
+                        path1 += 1;
+                    }
+                    // remove this path from array now, so just continue
+                    continue;
                 }
                 // if it's a lowercase cave, make sure we haven't visited it already
                 let sml_twice = nxt.chars().all(|c| c.is_ascii_lowercase()) && r.contains(&(",".to_string() + nxt + ","));
                 // we can only visit one small room twice, so do not add this one if this is the second small room that we visit twice
-                if sml_twice && r.starts_with("!,") {
+                if sml_twice && r.starts_with("!") {
                     continue;
                 }
                 let new_route = format!("{}{},{}", if sml_twice { "!" } else { "" }, r, nxt);
                 // addroutes contains Option<String> just to make it compatible with routes. It never contains None.
                 addroutes.push(Some(new_route));
                 // if the next step is not "end", we are not done yet
-                if nxt != "end" {
-                    done = false;
-                }
+                done = false;
             }
             // replace this route with the first route found. Or any route. Or with "None" if there are no routes.
             *maybe_r = addroutes.pop().unwrap_or(None);
         }
+        er.debugln(&format!("Number of routes before prune: {}", routes.len()));
+        // let last_set = routes.iter().enumerate().rev().filter_map(|(i, r)| { if r.is_some() { Some(i) } else { None } } ).next();
+        // if let Some(ls) = last_set {
+        //     routes.truncate(ls+1);
+        // }
+        routes = routes.into_iter().filter(|x| x.is_some()).collect();
+        er.debugln(&format!("Number of routes after prune: {}", routes.len()));
         routes.append(&mut addroutes);
         if done {
             break;
         }
     }
     // er.debugln(&format!("All complete routes: {:?}", routes));
-    let num = routes.iter().filter(|r| r.is_some() && !r.as_ref().unwrap().starts_with("!,")).count();
-    er.part1(num, Some("all routes with small caves once"));
-    let num2 = routes.iter().filter(|r| r.is_some()).count();
-    er.part2(num2, Some("all possible routes"))
+    er.part1(path1, Some("all routes with small caves once"));
+    er.part2(path1 + path2, Some("all possible routes"));
 }
 
 #[cfg(test)]
