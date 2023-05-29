@@ -132,7 +132,7 @@ pub fn solve(input: impl BufRead, er: &mut ExRunner) {
         do_fold(&mut field, f);
     }
     let disp = draw_points(field.into_keys().collect());
-    er.debugln(&disp);
+    er.part2(disp, None);
 }
 
 #[cfg(test)]
