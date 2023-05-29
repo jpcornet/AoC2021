@@ -24,3 +24,4 @@ day9_smoke_basin = { path = "../day9_smoke_basin" }
 day10_syntax_scoring = { path = "../day10_syntax_scoring" }
 day11_dumbo_octopus = { path = "../day11_dumbo_octopus" }
 day12_passage_passing = { path = "../day12_passage_passing" }
+day13_transparent_origami = { path = "../day13_transparent_origami" }
