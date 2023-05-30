@@ -144,7 +144,8 @@ impl<'a, 'b> ExRunner<'a, 'b> {
             let answers = self.answ();
             for i in 0..=1 {
                 if let Some(a) = &answers[i] {
-                    println!("{}: {}", self.label[i], a);
+                    let sep = if a.contains("\n") { "\n" } else { " " };
+                    println!("{}:{}{}", self.label[i], sep, a);
                 }
             }
             if let Some(pt) = self.parsetime {
