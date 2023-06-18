@@ -8,11 +8,7 @@ fn parse(input: impl BufRead) -> Vec<Vec<u8>> {
     ).collect()
 }
 
-pub fn solve(input: impl BufRead, er: &mut ExRunner) {
-    let field = parse(input);
-    assert!(field.len() > 0, "Input should be non-empty");
-    assert!(field[0].len() > 0, "Input lines should be non-empty");
-    er.parse_done();
+fn least_risk_cost(field: &Vec<Vec<u8>>) -> i32 {
     // initialize a known risk factor array
     let mut risk: Vec<Vec<Option<i32>>> = Vec::new();
     let xsize = field[0].len();
@@ -59,7 +55,75 @@ pub fn solve(input: impl BufRead, er: &mut ExRunner) {
             break;
         }
     }
-    er.part1(risk[ysize-1][xsize-1].unwrap(), None);
+    // the least risk path is now in the rightmost corner.
+    risk[ysize-1][xsize-1].unwrap()
+}
+
+fn field_plus_one(field: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
+    let mut ret = Vec::new();
+    for line in field {
+        let newline: Vec<u8> = line.iter().map(|c|
+            match *c {
+                9 => 1,
+                x => x + 1,
+            }
+        ).collect();
+        ret.push(newline);
+    }
+    ret
+}
+
+fn append_field(big: &mut Vec<Vec<u8>>, add: &Vec<Vec<u8>>, y: usize) {
+    if y >= big.len() {
+        // we can just append to big
+        for l in add {
+            let newl: Vec<u8> = (*l).clone();
+            big.push(newl);
+        }
+    } else {
+        for i in 0 .. add.len() {
+            let mut newl = add[i].clone();
+            big[y+i].append(&mut newl);
+        }
+    }
+}
+
+fn field_times_five(field: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
+    let mut bigfield = field.clone();
+    let ysize = field.len();
+    let mut lastfield = &bigfield;
+    // append copies of the input field to big field in this pattern:
+    // 0 1 2 3 4
+    // 1 2 3 4 5
+    // 2 3 4 5 6
+    // 3 4 5 6 7
+    // 4 5 6 7 8
+    // we already got 0
+    let mut extrafield;
+    for off in 1 ..= 8 {
+        extrafield = field_plus_one(lastfield);
+        for y in 0 ..= 4 {
+            if y > off || off - y >= 5 {
+                continue;
+            }
+            // append extrafield to bigfield at x*xsize, y*ysize.
+            // Note that we do not need the x size as we're always appending at the end of the array
+            append_field(&mut bigfield, &extrafield, y * ysize);
+        }
+        lastfield = &extrafield;
+    }
+    bigfield
+}
+
+pub fn solve(input: impl BufRead, er: &mut ExRunner) {
+    let field = parse(input);
+    assert!(field.len() > 0, "Input should be non-empty");
+    assert!(field[0].len() > 0, "Input lines should be non-empty");
+    er.parse_done();
+    er.part1(least_risk_cost(&field), None);
+    let bigfield = field_times_five(&field);
+    //println!("bigfield:\n{}", bigfield.iter().map(|l| String::from_utf8(l.iter().map(|b| b + b'0').collect()).unwrap()).collect::<Vec<String>>().join("\n"));
+    er.part2(least_risk_cost(&bigfield), None);
 }
 
 #[cfg(test)]
@@ -87,6 +151,7 @@ mod tests {
         let er = ExRunner::run("day 15 - chiton".to_string(), solve, test_input());
         er.print_raw();
         assert_eq!(er.answ()[0], Some("40".to_string()));
+        assert_eq!(er.answ()[1], Some("315".to_string()));
     }
 
 }
