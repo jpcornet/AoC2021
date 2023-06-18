@@ -3,6 +3,7 @@ use std::io::BufRead;
 use std::collections::HashMap;
 use std::str;
 use regex::Regex;
+use advent_of_code_ocr::*;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 struct Point {
@@ -132,7 +133,19 @@ pub fn solve(input: impl BufRead, er: &mut ExRunner) {
         do_fold(&mut field, f);
     }
     let disp = draw_points(field.into_keys().collect());
-    er.part2(disp, Some("folded orgami output"));
+    let screens = split_screen(&disp);
+    let mut answ2 = String::new();
+    for l in screens {
+        let one_char = parse_letter(&l);
+        if let Some(letter) = one_char {
+            answ2.push(letter);
+        } else {
+            er.debugln(&format!("Cannot parse letter:\n{}", l));
+            er.part2(disp, Some("Cannot parse letters from folded origami"));
+            return;
+        }
+    }
+    er.part2(answ2, Some("folded orgami output, parsed"));
 }
 
 #[cfg(test)]
