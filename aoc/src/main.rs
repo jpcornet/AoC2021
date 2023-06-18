@@ -20,6 +20,7 @@ const DAYS: &'static [Day] = &[
     Day{ dir: "day11_dumbo_octopus", solve: day11_dumbo_octopus::solve },
     Day{ dir: "day12_passage_passing", solve: day12_passage_passing::solve },
     Day{ dir: "day13_transparent_origami", solve: day13_transparent_origami::solve },
+    Day{ dir: "day14_extended_polymerization", solve: day14_extended_polymerization::solve },
 ];
 
 fn main() {
