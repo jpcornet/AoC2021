@@ -21,52 +21,15 @@ fn least_risk_cost(field: &Vec<Vec<u8>>) -> i32 {
     }
     // the starting position, upper left, is the beginning
     risk[0][0] = Some(0);
-    let mut walkers: Vec<(usize, usize)> = vec![(0, 0)];
-    loop {
-        // new walkers in a hashmap, as one single point could be inserted twice in this loop,
-        // make sure it only appears once in the next run.
-        let mut new_walkers: HashMap<(usize, usize), ()> = HashMap::new();
-        for (x, y) in walkers {
-            let cur_risk = risk[y][x].unwrap();
-            // look around in all directions
-            for (dx, dy) in [(-1, 0), (1, 0), (0, -1), (0, 1)] {
-                if (x as i32) + dx < 0 || (y as i32) + dy < 0 {
-                    continue;
-                }
-                let tx = ((x as i32) + dx) as usize;
-                let ty = ((y as i32) + dy) as usize;
-                if tx >= xsize || ty >= ysize {
-                    continue;
-                }
-                let new_risk = cur_risk + (field[ty][tx] as i32);
-                if let Some(old_risk) = risk[ty][tx] {
-                    if old_risk <= new_risk {
-                        // this path is not better than what we had, so give up
-                        continue;
-                    }
-                    risk[ty][tx] = Some(new_risk);
-                    // this path is better than what we had, so update everything below here ASAP
-                    // to prevent any workers out there from doing useless work
-                    fix_risk_cost(&field, &mut risk, tx, ty);
-                } else {
-                    risk[ty][tx] = Some(new_risk);
-                }
-                new_walkers.insert((tx, ty), ());
-            }
-        }
-        walkers = new_walkers.into_keys().collect();
-        // keep walking until all walkers are done
-        if walkers.is_empty() {
-            break;
-        }
-    }
-    // the least risk path is now in the rightmost corner.
+    // now walk the risk map
+    walk_risk(&field, &mut risk, 0, 0, false);
+    // the least risk path cost is now in the lower right corner.
     risk[ysize-1][xsize-1].unwrap()
 }
 
-// Fix the risks that have already been set at a too-high value. Looks a lot like least_risk_cost,
-// except it does not set new values
-fn fix_risk_cost(field: &Vec<Vec<u8>>, risk: &mut Vec<Vec<Option<i32>>>, x: usize, y: usize) {
+// walk the risk array, updating where possible.
+// if only_update is true, only updates risks that are already set.
+fn walk_risk(field: &Vec<Vec<u8>>, risk: &mut Vec<Vec<Option<i32>>>, x: usize, y: usize, only_update: bool) {
     let xsize = field[0].len();
     let ysize = field.len();
     let mut walkers = vec![(x, y)];
@@ -83,18 +46,29 @@ fn fix_risk_cost(field: &Vec<Vec<u8>>, risk: &mut Vec<Vec<Option<i32>>>, x: usiz
                 if tx >= xsize || ty >= ysize {
                     continue;
                 }
-                if risk[ty][tx].is_none() {
-                    continue;
-                }
                 let new_risk = cur_risk + (field[ty][tx] as i32);
-                if risk[ty][tx].unwrap() <= new_risk {
+                if let Some(old_risk) = risk[ty][tx] {
+                    if old_risk <= new_risk {
+                        // this path is not better than what we had, so give up
+                        continue;
+                    }
+                    risk[ty][tx] = Some(new_risk);
+                    if !only_update {
+                        // this path is better than we had, so update everything below here ASAP
+                        // to prevent any workers out there from doing useless work.
+                        walk_risk(&field, risk, tx, ty, true);
+                    }
+                } else if only_update {
+                    // we're only updating, so continue
                     continue;
+                } else {
+                    risk[ty][tx] = Some(new_risk);
                 }
-                risk[ty][tx] = Some(new_risk);
                 new_walkers.insert((tx, ty), ());
             }
         }
         walkers = new_walkers.into_keys().collect();
+        // keep walking until all walkers are done
         if walkers.is_empty() {
             return;
         }
