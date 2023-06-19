@@ -44,8 +44,13 @@ fn least_risk_cost(field: &Vec<Vec<u8>>) -> i32 {
                         // this path is not better than what we had, so give up
                         continue;
                     }
+                    risk[ty][tx] = Some(new_risk);
+                    // this path is better than what we had, so update everything below here ASAP
+                    // to prevent any workers out there from doing useless work
+                    fix_risk_cost(&field, &mut risk, tx, ty);
+                } else {
+                    risk[ty][tx] = Some(new_risk);
                 }
-                risk[ty][tx] = Some(new_risk);
                 new_walkers.insert((tx, ty), ());
             }
         }
@@ -57,6 +62,43 @@ fn least_risk_cost(field: &Vec<Vec<u8>>) -> i32 {
     }
     // the least risk path is now in the rightmost corner.
     risk[ysize-1][xsize-1].unwrap()
+}
+
+// Fix the risks that have already been set at a too-high value. Looks a lot like least_risk_cost,
+// except it does not set new values
+fn fix_risk_cost(field: &Vec<Vec<u8>>, risk: &mut Vec<Vec<Option<i32>>>, x: usize, y: usize) {
+    let xsize = field[0].len();
+    let ysize = field.len();
+    let mut walkers = vec![(x, y)];
+    loop {
+        let mut new_walkers: HashMap<(usize, usize), ()> = HashMap::new();
+        for (x, y) in walkers {
+            let cur_risk = risk[y][x].unwrap();
+            for (dx, dy) in [(-1, 0), (1, 0), (0, -1), (0, 1)] {
+                if (x as i32) + dx < 0 || (y as i32) + dy < 0 {
+                    continue;
+                }
+                let tx = ((x as i32) + dx) as usize;
+                let ty = ((y as i32) + dy) as usize;
+                if tx >= xsize || ty >= ysize {
+                    continue;
+                }
+                if risk[ty][tx].is_none() {
+                    continue;
+                }
+                let new_risk = cur_risk + (field[ty][tx] as i32);
+                if risk[ty][tx].unwrap() <= new_risk {
+                    continue;
+                }
+                risk[ty][tx] = Some(new_risk);
+                new_walkers.insert((tx, ty), ());
+            }
+        }
+        walkers = new_walkers.into_keys().collect();
+        if walkers.is_empty() {
+            return;
+        }
+    }
 }
 
 fn field_plus_one(field: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
